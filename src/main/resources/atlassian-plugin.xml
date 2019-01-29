@@ -1,0 +1,16 @@
+<atlassian-plugin key="${project.groupId}.${project.artifactId}" name="${project.name}" plugins-version="2">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" url="${project.organization.url}" />
+    </plugin-info>
+
+    <component-import key="gitCmdBuilderFactory" interface="com.atlassian.bitbucket.scm.git.command.GitCommandBuilderFactory"/>
+    <component-import key="commitService" interface="com.atlassian.bitbucket.commit.CommitService"/>
+
+    <repository-hook key="block-push-with-new-root" name="Orphaned Branches Blocker"
+                     class="com.atlassian.bitbucket.server.examples.PreReceiveBlockNewRootHook">
+        <description>Blocks pushes with root commit not present in current repository</description>
+    </repository-hook>
+
+</atlassian-plugin>
