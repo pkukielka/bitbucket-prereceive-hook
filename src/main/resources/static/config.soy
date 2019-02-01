@@ -1,0 +1,19 @@
+{namespace bitbucket.config.example.hook}
+
+/**
+ * @param config
+ */
+{template .formContents}
+    {call aui.form.textField}
+        {param id: 'ignoreHookKeyword' /}
+        {param value: $config['ignoreHookKeyword'] ? $config['ignoreHookKeyword'] : 'NEW_ROOT' /}
+        {param labelContent: 'Ignore hook keyword' /}
+        {param extraClasses: 'String' /}
+    {/call}
+    {call aui.form.textField}
+        {param id: 'allowedBranches' /}
+        {param value: $config['allowedBranches'] ? $config['allowedBranches'] : 'master,master-staging' /}
+        {param labelContent: 'Allowed branches (coma separated)' /}
+        {param extraClasses: 'String' /}
+    {/call}
+{/template}

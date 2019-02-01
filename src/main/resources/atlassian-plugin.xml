@@ -11,6 +11,10 @@
     <repository-hook key="block-push-with-new-root" name="Orphaned Branches Blocker"
                      class="com.atlassian.bitbucket.server.examples.PreReceiveBlockNewRootHook">
         <description>Blocks pushes with root commit not present in current repository</description>
+        <config-form name="Orphaned Branches Blocker Hook Config" key="simpleHook-config">
+            <view>bitbucket.config.example.hook.formContents</view>
+            <directory location="/static/"/>
+        </config-form>
     </repository-hook>
 
 </atlassian-plugin>

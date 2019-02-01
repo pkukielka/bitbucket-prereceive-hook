@@ -14,7 +14,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Collectors;
 
 class MergeBaseCommandOutputHandler extends StringOutputHandler implements CommandOutputHandler<String> {}
 
@@ -35,8 +35,6 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
 
     private GitCommandBuilderFactory gitCmdBuilderFactory;
     private CommitService commitService;
-    private String ignoreHookKeyword = "NEW_ROOT";
-    private List<String> allowedBranches = Arrays.asList("master");
 
     public PreReceiveBlockNewRootHook(GitCommandBuilderFactory gitCmdBuilderFactory, CommitService commitService) {
         this.gitCmdBuilderFactory = gitCmdBuilderFactory;
@@ -50,9 +48,17 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
 
         String rootHash = request.getRefChanges().iterator().next().getToHash();
         Commit rootCommit = commitService.getCommit(new CommitRequest.Builder(request.getRepository(), rootHash).build());
-        if (Objects.requireNonNull(rootCommit.getMessage()).contains(ignoreHookKeyword)) {
+        String ignoreHookKeyword = context.getSettings().getString("ignoreHookKeyword");
+
+
+        if (rootCommit.getMessage().contains(ignoreHookKeyword)) {
             return RepositoryHookResult.accepted();
         }
+
+        List<String> allowedBranches = Arrays.stream(context.getSettings().getString("allowedBranches")
+                .split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
 
         for (String allowedBranch : allowedBranches) {
             for (RefChange refChange : request.getRefChanges()) {
@@ -68,7 +74,7 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
             }
         }
 
-        return RepositoryHookResult.rejected("Push was rejected because no common root commit found was found.",
+        return RepositoryHookResult.rejected("Push was rejected because no common root commit was found.",
                 "This happened because you tried to push from orphaned or not allowed branch.\n" +
                         "Allowed branches: " + String.join(", ", allowedBranches));
     }
