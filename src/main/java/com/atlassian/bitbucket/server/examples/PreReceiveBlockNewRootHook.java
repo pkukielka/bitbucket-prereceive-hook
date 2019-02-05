@@ -1,6 +1,5 @@
 package com.atlassian.bitbucket.server.examples;
 
-import com.atlassian.bitbucket.commit.Commit;
 import com.atlassian.bitbucket.commit.CommitRequest;
 import com.atlassian.bitbucket.commit.CommitService;
 import com.atlassian.bitbucket.hook.repository.*;
@@ -16,7 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class MergeBaseCommandOutputHandler extends StringOutputHandler implements CommandOutputHandler<String> {}
+class MergeBaseCommandOutputHandler extends StringOutputHandler implements CommandOutputHandler<String> {
+}
 
 class MergeCommandExitHandler implements CommandExitHandler {
     boolean wasSuccessful = false;
@@ -41,20 +41,27 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
         this.commitService = commitService;
     }
 
+    private boolean hasCommonMergeBase(RepositoryHookRequest request, RefChange refChange, String allowedBranch) {
+        MergeCommandExitHandler exitHandler = new MergeCommandExitHandler();
+        gitCmdBuilderFactory
+                .builder(request.getRepository()).mergeBase()
+                .between(refChange.getToHash(), allowedBranch)
+                .exitHandler(exitHandler)
+                .build(new MergeBaseCommandOutputHandler()).call();
+        return exitHandler.wasSuccessful;
+    }
+
+    private boolean isIgnored(RepositoryHookRequest request, RefChange refChange, PreRepositoryHookContext context) {
+        CommitRequest commitRequest = new CommitRequest.Builder(request.getRepository(), refChange.getToHash()).build();
+        String ignoreHookKeyword = context.getSettings().getString("ignoreHookKeyword");
+        String commitMessage = commitService.getCommit(commitRequest).getMessage();
+        return commitMessage != null && ignoreHookKeyword != null && commitMessage.contains(ignoreHookKeyword);
+    }
+
     @Nonnull
     @Override
     public RepositoryHookResult preUpdate(@Nonnull PreRepositoryHookContext context,
                                           @Nonnull RepositoryHookRequest request) {
-
-        String rootHash = request.getRefChanges().iterator().next().getToHash();
-        Commit rootCommit = commitService.getCommit(new CommitRequest.Builder(request.getRepository(), rootHash).build());
-        String ignoreHookKeyword = context.getSettings().getString("ignoreHookKeyword");
-
-
-        if (rootCommit.getMessage().contains(ignoreHookKeyword)) {
-            return RepositoryHookResult.accepted();
-        }
-
         List<String> allowedBranches = Arrays.stream(context.getSettings().getString("allowedBranches")
                 .split(","))
                 .map(String::trim)
@@ -62,20 +69,14 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
 
         for (String allowedBranch : allowedBranches) {
             for (RefChange refChange : request.getRefChanges()) {
-                MergeCommandExitHandler exitHandler = new MergeCommandExitHandler();
-
-                gitCmdBuilderFactory
-                        .builder(request.getRepository()).mergeBase()
-                        .between(refChange.getToHash(), allowedBranch)
-                        .exitHandler(exitHandler)
-                        .build(new MergeBaseCommandOutputHandler()).call();
-
-                if (exitHandler.wasSuccessful) return RepositoryHookResult.accepted();
+                if (!isIgnored(request, refChange, context) && !hasCommonMergeBase(request, refChange, allowedBranch)) {
+                    return RepositoryHookResult.rejected(
+                            "Push was rejected because you tried to push from orphaned or not allowed branch " + refChange.getRef().getDisplayId(),
+                            "Your branch must have common root commit with one of the following branches: " + String.join(", ", allowedBranches));
+                }
             }
         }
 
-        return RepositoryHookResult.rejected("Push was rejected because no common root commit was found.",
-                "This happened because you tried to push from orphaned or not allowed branch.\n" +
-                        "Allowed branches: " + String.join(", ", allowedBranches));
+        return RepositoryHookResult.accepted();
     }
 }
