@@ -1,4 +1,4 @@
-package com.atlassian.bitbucket.server.examples;
+package com.ms.msde.stash.hook.orphanebranchblocker;
 
 import com.atlassian.bitbucket.commit.CommitRequest;
 import com.atlassian.bitbucket.commit.CommitService;

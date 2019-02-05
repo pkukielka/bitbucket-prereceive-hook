@@ -9,10 +9,10 @@
     <component-import key="commitService" interface="com.atlassian.bitbucket.commit.CommitService"/>
 
     <repository-hook key="block-push-with-new-root" name="Orphaned Branches Blocker"
-                     class="com.atlassian.bitbucket.server.examples.PreReceiveBlockNewRootHook">
+                     class="com.ms.msde.stash.hook.orphanebranchblocker.PreReceiveBlockNewRootHook">
         <description>Blocks pushes with root commit not present in current repository</description>
         <config-form name="Orphaned Branches Blocker Hook Config" key="simpleHook-config">
-            <view>bitbucket.config.example.hook.formContents</view>
+            <view>com.ms.msde.stash.hook.orphanebranchblocker.config.formContents</view>
             <directory location="/static/"/>
         </config-form>
     </repository-hook>
