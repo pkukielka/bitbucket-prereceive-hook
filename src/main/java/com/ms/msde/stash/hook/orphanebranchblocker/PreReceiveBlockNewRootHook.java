@@ -7,6 +7,7 @@ import com.atlassian.bitbucket.repository.RefChange;
 import com.atlassian.bitbucket.scm.CommandExitHandler;
 import com.atlassian.bitbucket.scm.CommandOutputHandler;
 import com.atlassian.bitbucket.scm.git.command.GitCommandBuilderFactory;
+import com.atlassian.bitbucket.setting.Settings;
 import com.atlassian.utils.process.StringOutputHandler;
 
 import javax.annotation.Nonnull;
@@ -51,32 +52,45 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
         return exitHandler.wasSuccessful;
     }
 
-    private boolean isIgnored(RepositoryHookRequest request, RefChange refChange, PreRepositoryHookContext context) {
+    private boolean isRefChangeIgnored(RepositoryHookRequest request, RefChange refChange, PreRepositoryHookContext context) {
         CommitRequest commitRequest = new CommitRequest.Builder(request.getRepository(), refChange.getToHash()).build();
         String ignoreHookKeyword = context.getSettings().getString("ignoreHookKeyword");
         String commitMessage = commitService.getCommit(commitRequest).getMessage();
         return commitMessage != null && ignoreHookKeyword != null && commitMessage.contains(ignoreHookKeyword);
     }
 
+    private boolean isRefChangeAllowed(@Nonnull RepositoryHookRequest request, List<String> allowedBranches, RefChange refChange) {
+        for (String allowedBranch : allowedBranches) {
+            if (hasCommonMergeBase(request, refChange, allowedBranch)) return true;
+        }
+        return false;
+    }
+
     @Nonnull
     @Override
     public RepositoryHookResult preUpdate(@Nonnull PreRepositoryHookContext context,
                                           @Nonnull RepositoryHookRequest request) {
-        List<String> allowedBranches = Arrays.stream(context.getSettings().getString("allowedBranches")
-                .split(","))
-                .map(String::trim)
-                .collect(Collectors.toList());
+        if ("pull-request-merge".equals(request.getTrigger().getId())) {
+            if (context.getSettings().getBoolean("isMergingBlocked")) {
+                return RepositoryHookResult.rejected(
+                        context.getSettings().getString("mergeBlockSummary"),
+                        context.getSettings().getString("mergeBlockDetails"));
+            }
+        } else {
+            List<String> allowedBranches = Arrays.stream(context.getSettings().getString("allowedBranches")
+                    .split(","))
+                    .map(String::trim)
+                    .collect(Collectors.toList());
 
-        for (String allowedBranch : allowedBranches) {
             for (RefChange refChange : request.getRefChanges()) {
-                if (!isIgnored(request, refChange, context) && !hasCommonMergeBase(request, refChange, allowedBranch)) {
+                if (!isRefChangeIgnored(request, refChange, context) && !isRefChangeAllowed(request, allowedBranches, refChange)) {
                     return RepositoryHookResult.rejected(
                             "Push was rejected because you tried to push from orphaned or not allowed branch " + refChange.getRef().getDisplayId(),
                             "Your branch must have common root commit with one of the following branches: " + String.join(", ", allowedBranches));
                 }
             }
-        }
 
-        return RepositoryHookResult.accepted();
+            return RepositoryHookResult.accepted();
+        }
     }
 }

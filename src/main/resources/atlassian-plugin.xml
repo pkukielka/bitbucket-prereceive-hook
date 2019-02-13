@@ -16,5 +16,4 @@
             <directory location="/static/"/>
         </config-form>
     </repository-hook>
-
 </atlassian-plugin>
