@@ -16,22 +16,4 @@
         {param labelContent: 'Allowed branches (coma separated)' /}
         {param extraClasses: 'String' /}
     {/call}
-    {call aui.form.checkboxField}
-        {param legendContent: 'Is merge blocked?' /}
-        {param fields: [
-            ['id': 'isMergingBlocked', 'labelText': '', 'isChecked': false]
-         ]/}
-    {/call}
-    {call aui.form.textField}
-        {param id: 'mergeBlockSummary2' /}
-        {param value: $config['mergeBlockSummary'] ? $config['mergeBlockSummary'] : 'This pull request cannot be merged since all PRs have to be merged using' /}
-        {param labelContent: 'Merge button summary (when blocked)' /}
-        {param extraClasses: 'String' /}
-    {/call}
-    {call aui.form.textField}
-        {param id: 'mergeBlockDetails2' /}
-        {param value: $config['mergeBlockDetails'] ? $config['mergeBlockDetails'] : 'xxz' /}
-        {param labelContent: 'Merge button details (when blocked)' /}
-        {param extraClasses: 'String' /}
-    {/call}
 {/template}

@@ -16,4 +16,12 @@
             <directory location="/static/"/>
         </config-form>
     </repository-hook>
+
+    <repository-merge-check key="enforce-approvals" name="Enforce Approvals"
+                            class="com.ms.msde.stash.hook.mergeblocker.DryRunMergeBlocker">
+        <description>
+            Enforces that pull requests must have a minimum number of acceptances before they can be merged.
+        </description>
+        <icon>icons/example.png</icon>
+    </repository-merge-check>
 </atlassian-plugin>

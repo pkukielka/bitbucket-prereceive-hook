@@ -7,7 +7,6 @@ import com.atlassian.bitbucket.repository.RefChange;
 import com.atlassian.bitbucket.scm.CommandExitHandler;
 import com.atlassian.bitbucket.scm.CommandOutputHandler;
 import com.atlassian.bitbucket.scm.git.command.GitCommandBuilderFactory;
-import com.atlassian.bitbucket.setting.Settings;
 import com.atlassian.utils.process.StringOutputHandler;
 
 import javax.annotation.Nonnull;
@@ -67,30 +66,22 @@ public class PreReceiveBlockNewRootHook implements PreRepositoryHook<RepositoryH
     }
 
     @Nonnull
-    @Override
     public RepositoryHookResult preUpdate(@Nonnull PreRepositoryHookContext context,
                                           @Nonnull RepositoryHookRequest request) {
-        if ("pull-request-merge".equals(request.getTrigger().getId())) {
-            if (context.getSettings().getBoolean("isMergingBlocked")) {
+
+        List<String> allowedBranches = Arrays.stream(context.getSettings().getString("allowedBranches")
+                .split(","))
+                .map(String::trim)
+                .collect(Collectors.toList());
+
+        for (RefChange refChange : request.getRefChanges()) {
+            if (!isRefChangeIgnored(request, refChange, context) && !isRefChangeAllowed(request, allowedBranches, refChange)) {
                 return RepositoryHookResult.rejected(
-                        context.getSettings().getString("mergeBlockSummary"),
-                        context.getSettings().getString("mergeBlockDetails"));
+                        "Push was rejected because you tried to push from orphaned or not allowed branch " + refChange.getRef().getDisplayId(),
+                        "Your branch must have common root commit with one of the following branches: " + String.join(", ", allowedBranches));
             }
-        } else {
-            List<String> allowedBranches = Arrays.stream(context.getSettings().getString("allowedBranches")
-                    .split(","))
-                    .map(String::trim)
-                    .collect(Collectors.toList());
-
-            for (RefChange refChange : request.getRefChanges()) {
-                if (!isRefChangeIgnored(request, refChange, context) && !isRefChangeAllowed(request, allowedBranches, refChange)) {
-                    return RepositoryHookResult.rejected(
-                            "Push was rejected because you tried to push from orphaned or not allowed branch " + refChange.getRef().getDisplayId(),
-                            "Your branch must have common root commit with one of the following branches: " + String.join(", ", allowedBranches));
-                }
-            }
-
-            return RepositoryHookResult.accepted();
         }
+
+        return RepositoryHookResult.accepted();
     }
 }
